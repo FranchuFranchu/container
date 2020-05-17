@@ -26,14 +26,30 @@ def test_type(obj, cls):
 
     return False
 
+def get_annotations(cls):
+    if hasattr(cls, "__annotations__"):
+        d = {**cls.__annotations__}
+    else:
+        d = {}
+    for i in cls.__bases__:
+        d = {**d, **get_annotations(i)}
+    return d
 
+def get_dict(cls):
+    if hasattr(cls, "__dict__"):
+        d = {**cls.__dict__}
+    else:
+        d = {}
+    for i in cls.__bases__:
+        d = {**d, **get_dict(i)}
+    return d
 
 class BaseContainer:
     def __init__(self, **kwargs):
 
         nkwargs = kwargs.copy()
         for k, v in kwargs.items():
-            expected_type = self.__class__.__annotations__.get(k)
+            expected_type = get_annotations(self.__class__).get(k)
             if expected_type is not None:
 
                 if not test_type(v, expected_type):
@@ -43,6 +59,7 @@ class BaseContainer:
             setattr(self, k, v)
 
 
+
         super().__init__(**nkwargs)
 
 
@@ -50,7 +67,8 @@ class FillMixin:
     def __init__(self, **kwargs):
 
         # Get all the attributes that haven't been specified
-        not_specified = {k: self.__class__.__annotations__[k] for k in set(self.__class__.__annotations__) - set(self.__dict__)}
+        ann = get_annotations(self.__class__)
+        not_specified = {k: ann[k] for k in set(ann) - set(self.__dict__)}
         for k, v in not_specified.items():
             if test_type(None, v):
                 setattr(self, k, None)
@@ -64,10 +82,11 @@ class DefaultMixin:
     def __init__(self, **kwargs):
         # Get all the attributes that have been defaulted in class
         specified_in_class = {}
+        d = get_dict(self.__class__)
 
-        for k in self.__class__.__dict__.keys():
+        for k in d.keys():
             if not hasattr(self, k):
-                setattr(self, k, getattr(self.__class__, k))
+                setattr(self, k, d[k])
             else:
                 # Filter out magic attributes such as __module__
                 if k.startswith("__") and k.endswith("__"):
