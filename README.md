@@ -1,5 +1,9 @@
 # container
 
+Python package to parse keyword arguments passed into __init__ into an object's attributes
+
+## Code
+
 Sample code:
     
     from container import Container
